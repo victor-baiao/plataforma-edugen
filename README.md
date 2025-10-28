@@ -45,78 +45,90 @@ cd plataforma-educativa-generativa
 
 ### 3. Configurar o Ambiente Virtual (Venv)
 
-# Criar o ambiente virtual
+## Criar o ambiente virtual
 
+```bash
 python -m venv venv
+```
 
-# Ativar o ambiente (Windows)
+## Ativar o ambiente (Windows)
 
+```bash
 .\venv\Scripts\activate
+```
 
-# Ativar o ambiente (macOS/Linux)
+## Ativar o ambiente (macOS/Linux)
 
-# source venv/bin/activate
+## source venv/bin/activate
 
 ### 4. Instalar as Dependências
 
+```bash
 pip install -r requirements.txt
+```
 
 ### 5. Configurar a Chave de API (Obrigatório)
 
-# 1- Crie um arquivo chamado .env na mesma pasta que o app.py
+## 1- Crie um arquivo chamado .env na mesma pasta que o app.py
 
-# 2- Abra o arquivo .env e adicione sua chave criada:
+## 2- Abra o arquivo .env e adicione sua chave criada:
 
 GOOGLE_API_KEY=SUA_CHAVE_DE_API_GERADA_NO_GOOGLE_AI_STUDIO
 
 ### 6. Verificar e configurar o modela de IA
 
-# 1. Execute o script check_models.py:
+## 1. Execute o script check_models.py:
 
 python check_models.py
 
-# 2. O terminal listará os modelos disponíveis para sua chave (ex: models/gemini-pro-latest).
+## 2. O terminal listará os modelos disponíveis para sua chave (ex: models/gemini-pro-latest).
 
-# 3. Copie o nome de um modelo robusto da lista (ex: models/gemini-pro-latest).
+## 3. Copie o nome de um modelo robusto da lista (ex: models/gemini-pro-latest).
 
-# 4. Abra o arquivo app.py e cole esse nome na linha de configuração do modelo:
+## 4. Abra o arquivo app.py e cole esse nome na linha de configuração do modelo:
 
-# - Verifique se esta linha corresponde a um modelo da sua lista
+## - Verifique se esta linha corresponde a um modelo da sua lista
 
 model = genai.GenerativeModel('models/gemini-pro-latest')
 
 ### 7. Executar o Servidor
 
+```bash
 python app.py
+```
 
-# O terminal deve exibir uma mensagem indicando que o servidor está rodando: \* Running on http://127.0.0.1:5000
+## O terminal deve exibir uma mensagem indicando que o servidor está rodando: \* Running on http://127.0.0.1:5000
 
 ### 8. Como Testar
 
-# Nesta fase, o frontend (Fase 3) ainda não está conectado. Usamos o Postman para simular a requisição que o frontend fará.
+## Nesta fase, o frontend (Fase 3) ainda não está conectado. Usamos o Postman para simular a requisição que o frontend fará.
 
-# Instale e abra o Postman.
+## Instale e abra o Postman.
 
-# Crie uma nova requisição com os seguintes parâmetros:
+## Crie uma nova requisição com os seguintes parâmetros:
 
 Método: POST
 
+```bash
 URL: http://127.0.0.1:5000/api/generate-learning
+```
 
-# Vá para a aba Body.
+## Vá para a aba Body.
 
-# Selecione a opção raw.
+## Selecione a opção raw.
 
-# Mude o tipo de Text para JSON.
+## Mude o tipo de Text para JSON.
 
-# Cole o seguinte JSON no corpo (Body) da requisição:
+## Cole o seguinte JSON no corpo (Body) da requisição:
 
 JSON
 
+```bash
 {
 "topic": "Princípio de funcionamento do TCP/IP",
 "level": "Intermediário"
 }
+```
 
 # Clique em Send.
 
