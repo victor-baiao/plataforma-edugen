@@ -1,4 +1,20 @@
-venv/
-.env
-__pycache__/
+# --- GERAL ---
+.DS_Store
+.vscode/
+*.log
+
+# --- BACKEND (Python) ---
+backend/venv/
+backend/.env
+backend/__pycache__/
 *.pyc
+
+# --- FRONTEND (Node/React) ---
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
