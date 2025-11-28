@@ -30,8 +30,10 @@ except KeyError:
 
 # Função assíncrona para gerar voz neural
 async def generate_neural_voice(text, filename):
-    voice = "pt-BR-AntonioNeural" 
-    communicate = edge_tts.Communicate(text, voice, rate="+50%")
+    voice = "pt-BR-FranciscaNeural" 
+    if not text or len(text.strip()) == 0:
+        return
+    communicate = edge_tts.Communicate(text, voice)
     # Salva usando o caminho absoluto
     save_path = os.path.join(STATIC_DIR, filename)
     await communicate.save(save_path)
