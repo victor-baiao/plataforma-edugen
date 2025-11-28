@@ -13,6 +13,9 @@ load_dotenv()
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
+if not os.path.exists('static'):
+    os.makedirs('static')
+
 # Configuração da IA
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
