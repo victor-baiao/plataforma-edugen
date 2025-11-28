@@ -19,7 +19,7 @@ if not os.path.exists(STATIC_DIR):
 app = Flask(__name__, static_folder=STATIC_DIR)
 CORS(app)
 
-# Configuração da IA (Gemini)
+# Configuração da IA
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('models/gemini-pro-latest')
@@ -31,8 +31,7 @@ def generate_voice_elevenlabs(text, filename):
     if not api_key:
         raise Exception("Chave ElevenLabs não configurada")
 
-    # ID da voz "Brian" (Narrador Profissional) - Você pode trocar se quiser
-    voice_id = "nPczCjz82INmrbC4qGTr" 
+    voice_id = "onwK4e9ZLuTAKqWW03F9" 
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     
