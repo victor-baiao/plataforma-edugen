@@ -2,6 +2,7 @@ import os
 import google.generativeai as genai
 import json
 import uuid
+import requests
 from gtts import gTTS
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -18,22 +19,70 @@ if not os.path.exists(STATIC_DIR):
 app = Flask(__name__, static_folder=STATIC_DIR)
 CORS(app)
 
-# Configuração da IA
+# Configuração da IA (Gemini)
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('models/gemini-pro-latest')
 except KeyError:
     print("ERRO CRÍTICO: GOOGLE_API_KEY não encontrada.")
 
+def generate_voice_elevenlabs(text, filename):
+    api_key = os.environ.get("ELEVEN_API_KEY")
+    if not api_key:
+        raise Exception("Chave ElevenLabs não configurada")
+
+    # ID da voz "Brian" (Narrador Profissional) - Você pode trocar se quiser
+    voice_id = "nPczCjz82INmrbC4qGTr" 
+    
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": api_key
+    }
+    
+    data = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2", # Modelo que fala Português bem
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75
+        }
+    }
+    
+    response = requests.post(url, json=data, headers=headers)
+    
+    if response.status_code != 200:
+        raise Exception(f"Erro ElevenLabs: {response.text}")
+
+    save_path = os.path.join(STATIC_DIR, filename)
+    with open(save_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=1024):
+            if chunk:
+                f.write(chunk)
+
+# --- MOTOR DE ÁUDIO 2: GOOGLE TTS (Fallback/Estepe) ---
 def generate_voice_gtts(text, filename):
     if not text or len(text.strip()) == 0:
         return
-
-    # Gera o áudio usando a API do Google (Síncrona e Estável)
     tts = gTTS(text=text, lang='pt')
-    
     save_path = os.path.join(STATIC_DIR, filename)
     tts.save(save_path)
+
+# --- GERADOR MESTRE DE ÁUDIO ---
+def generate_audio(text, filename):
+    # Tenta ElevenLabs primeiro (Melhor qualidade)
+    try:
+        print("Tentando gerar áudio com ElevenLabs...")
+        generate_voice_elevenlabs(text, filename)
+        return # Sucesso!
+    except Exception as e:
+        print(f"ElevenLabs falhou ou sem chave ({e}). Usando Google TTS.")
+    
+    # Se falhar (ou sem chave), usa Google (Garantido)
+    generate_voice_gtts(text, filename)
+
 
 def build_prompt(topic: str, level: str) -> str:
     return f"""
@@ -94,13 +143,13 @@ def generate_learning_content():
             seed = uuid.uuid4().int % 100
             slide['imageUrl'] = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=576&nologo=true&seed={seed}"
             
-            # Áudio com gTTS
+            # Áudio (Chama a função inteligente)
             audio_filename = f"{uuid.uuid4()}.mp3"
             try:
-                generate_voice_gtts(slide['text'], audio_filename)
+                generate_audio(slide['text'], audio_filename)
                 slide['audioUrl'] = f"{base_url}/static/{audio_filename}"
             except Exception as e:
-                print(f"Erro ao gerar áudio: {e}")
+                print(f"Erro fatal ao gerar áudio: {e}")
                 slide['audioUrl'] = ""
 
         return jsonify(content_data), 200

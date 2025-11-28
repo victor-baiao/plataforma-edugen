@@ -28,8 +28,8 @@ function App() {
   const [level, setLevel] = useState('Iniciante');
   
   // Estados de Carregamento
-  const [loading, setLoading] = useState(false); // Carregando JSON do Backend
-  const [isPreloadingImages, setIsPreloadingImages] = useState(false); // Carregando Imagens (Novo!)
+  const [loading, setLoading] = useState(false);
+  const [isPreloadingImages, setIsPreloadingImages] = useState(false);
   
   const [content, setContent] = useState<LearningContent | null>(null);
   const [error, setError] = useState('');
@@ -46,11 +46,15 @@ function App() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Efeito para tocar áudio
   useEffect(() => {
     if (content && viewMode === 'slides' && !isPreloadingImages && audioRef.current) {
       audioRef.current.pause();
       audioRef.current.load();
+      
+      
+      audioRef.current.playbackRate = 1.35;
+      
+
       audioRef.current.play().catch(e => console.log("Autoplay bloqueado:", e));
     }
   }, [currentSlideIndex, content, viewMode, isPreloadingImages]);
@@ -63,11 +67,9 @@ function App() {
         const img = new Image();
         img.src = slide.imageUrl;
         img.onload = resolve;
-        img.onerror = resolve; // Resolve mesmo com erro para não travar o app
+        img.onerror = resolve; 
       });
     });
-
-    // Espera todas as imagens baixarem
     await Promise.all(promises);
     setIsPreloadingImages(false);
   };
@@ -75,11 +77,7 @@ function App() {
   const handleGenerate = async () => {
     if (!topic.trim()) return alert('Por favor, digite um tópico!');
     
-    setLoading(true); 
-    setError(''); 
-    setContent(null);
-    
-    // Resetar tudo
+    setLoading(true); setError(''); setContent(null);
     setCurrentSlideIndex(0); setViewMode('slides');
     setCurrentQuizIndex(0); setUserAnswers({}); 
     setIsQuizFinished(false); setShowAnswerKey(false);
@@ -96,11 +94,9 @@ function App() {
 
       const data: LearningContent = await response.json();
       
-      // ANTES DE MOSTRAR, PRÉ-CARREGA AS IMAGENS
-      setLoading(false); // Para o loading do texto
-      await preloadImages(data.slides); // Inicia loading das imagens
-      
-      setContent(data); // Finalmente mostra o conteúdo
+      setLoading(false); 
+      await preloadImages(data.slides); 
+      setContent(data); 
       
     } catch (err) {
       console.error(err);
@@ -140,9 +136,6 @@ function App() {
     return { text: "Bom esforço! Que tal rever os slides?", color: "text-orange-500" };
   };
 
-  // --- RENDERIZAÇÃO ---
-
-  // Tela de Loading Combinada (Backend ou Imagens)
   const isProcessing = loading || isPreloadingImages;
 
   return (
@@ -158,7 +151,6 @@ function App() {
 
       <main className="max-w-4xl mx-auto px-6 pt-8">
         
-        {/* --- TELA INICIAL (FORMULÁRIO) OU LOADING --- */}
         {(!content || isProcessing) && (
           <div className="animate-in fade-in zoom-in duration-500 max-w-2xl mx-auto">
             {!content && (
@@ -170,7 +162,6 @@ function App() {
                 </div>
             )}
 
-            {/* Se já tiver conteúdo mas estiver baixando imagens, esconde o form e mostra loading */}
             {!content && (
                 <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
                 <div className="mb-6">
@@ -202,7 +193,6 @@ function App() {
                 </div>
             )}
             
-            {/* Loading State Apenas Visual (Opcional, se quiser esconder o form enquanto carrega) */}
             {isProcessing && content && (
                  <div className="flex flex-col items-center justify-center py-20">
                     <div className="animate-spin h-12 w-12 border-4 border-teal-500 border-t-transparent rounded-full mb-4"></div>
@@ -214,7 +204,6 @@ function App() {
           </div>
         )}
 
-        {/* --- CONTEÚDO GERADO (SÓ APARECE QUANDO TUDO ESTÁ PRONTO) --- */}
         {content && !isProcessing && (
           <div className="animate-in slide-in-from-bottom-8 duration-700">
             
