@@ -2,16 +2,13 @@ import os
 import google.generativeai as genai
 import json
 import uuid
-import asyncio
-import edge_tts
+from gtts import gTTS
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- CONFIGURAÇÃO DE CAMINHOS ABSOLUTOS ---
-# Isso garante que a pasta static seja criada no lugar certo no Linux do Render
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
@@ -28,33 +25,40 @@ try:
 except KeyError:
     print("ERRO CRÍTICO: GOOGLE_API_KEY não encontrada.")
 
-# Função assíncrona para gerar voz neural
-async def generate_neural_voice(text, filename):
-    voice = "pt-BR-FranciscaNeural" 
+def generate_voice_gtts(text, filename):
     if not text or len(text.strip()) == 0:
         return
-    communicate = edge_tts.Communicate(text, voice)
-    # Salva usando o caminho absoluto
+
+    # Gera o áudio usando a API do Google (Síncrona e Estável)
+    tts = gTTS(text=text, lang='pt')
+    
     save_path = os.path.join(STATIC_DIR, filename)
-    await communicate.save(save_path)
+    tts.save(save_path)
 
 def build_prompt(topic: str, level: str) -> str:
     return f"""
-    Você é um professor universitário experiente. Crie uma aula em formato de SLIDES sobre "{topic}" (Nível: {level}).
-    Sua tarefa é gerar um JSON contendo uma lista de slides didáticos e um quiz final.
-    ESTRUTURA OBRIGATÓRIA DO JSON:
+    Você é um professor universitário. Crie uma aula em SLIDES sobre "{topic}" (Nível: {level}).
+    Gere um JSON com slides didáticos e um quiz final.
+    ESTRUTURA JSON OBRIGATÓRIA:
     {{
       "slides": [
         {{
           "id": 1,
           "title": "Título...",
-          "text": "Texto narrado...",
+          "text": "Texto explicativo curto (max 40 palavras) para ser lido.",
           "imagePrompt": "Prompt visual em inglês..."
         }}
       ],
-      "quiz": [ ... ]
+      "quiz": [
+        {{
+          "questionId": 1,
+          "questionText": "...",
+          "options": ["A", "B", "C", "D"],
+          "correctOptionIndex": 0
+        }}
+      ]
     }}
-    Responda APENAS o JSON válido.
+    Responda APENAS o JSON.
     """
 
 def clean_json_response(raw_text: str) -> dict:
@@ -72,7 +76,7 @@ def generate_learning_content():
         topic = data.get('topic')
         level = data.get('level')
 
-        print(f"Gerando aula sobre: {topic}") # Log para debug
+        print(f"Gerando aula sobre: {topic}")
 
         # 1. Gera Texto
         prompt = build_prompt(topic, level)
@@ -82,7 +86,6 @@ def generate_learning_content():
         if "error" in content_data: return jsonify(content_data), 500
 
         # 2. Processa Slides
-        # Pega a URL pública do Render ou usa localhost se não estiver definida
         base_url = os.environ.get('RENDER_EXTERNAL_URL', 'http://127.0.0.1:5000')
 
         for slide in content_data['slides']:
@@ -91,20 +94,19 @@ def generate_learning_content():
             seed = uuid.uuid4().int % 100
             slide['imageUrl'] = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=576&nologo=true&seed={seed}"
             
-            # Áudio
+            # Áudio com gTTS
             audio_filename = f"{uuid.uuid4()}.mp3"
             try:
-                asyncio.run(generate_neural_voice(slide['text'], audio_filename))
-                # CORREÇÃO CRÍTICA: Usa a URL pública do backend
+                generate_voice_gtts(slide['text'], audio_filename)
                 slide['audioUrl'] = f"{base_url}/static/{audio_filename}"
             except Exception as e:
                 print(f"Erro ao gerar áudio: {e}")
-                slide['audioUrl'] = "" # Não quebra se o áudio falhar
+                slide['audioUrl'] = ""
 
         return jsonify(content_data), 200
 
     except Exception as e:
-        print(f"ERRO GERAL NO SERVIDOR: {e}") # Isso vai aparecer nos logs do Render
+        print(f"ERRO GERAL: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
