@@ -51,9 +51,7 @@ function App() {
       audioRef.current.pause();
       audioRef.current.load();
       
-      
       audioRef.current.playbackRate = 1.50;
-      
 
       audioRef.current.play().catch(e => console.log("Autoplay bloqueado:", e));
     }
@@ -134,6 +132,11 @@ function App() {
     if (p === 100) return { text: "Perfeito! Você dominou o assunto!", color: "text-teal-600" };
     if (p >= 70) return { text: "Excelente! Você aprendeu muito.", color: "text-teal-600" };
     return { text: "Bom esforço! Que tal rever os slides?", color: "text-orange-500" };
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = "https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2029&auto=format&fit=crop";
+    e.currentTarget.onerror = null; // Previne loop infinito
   };
 
   const isProcessing = loading || isPreloadingImages;
@@ -223,6 +226,9 @@ function App() {
                             key={content.slides[currentSlideIndex].imageUrl}
                             src={content.slides[currentSlideIndex].imageUrl} 
                             alt={content.slides[currentSlideIndex].title} 
+
+                            onError={handleImageError}
+
                             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
