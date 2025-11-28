@@ -52,7 +52,7 @@ function App() {
       audioRef.current.load();
       
       
-      audioRef.current.playbackRate = 1.35;
+      audioRef.current.playbackRate = 1.50;
       
 
       audioRef.current.play().catch(e => console.log("Autoplay bloqueado:", e));
