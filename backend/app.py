@@ -36,29 +36,36 @@ def generate_audio(text, filename):
 
 def build_prompt(topic: str, level: str) -> str:
     return f"""
-    Você é um professor universitário. Crie uma aula em SLIDES sobre "{topic}" (Nível: {level}).
-    Gere um JSON com slides didáticos e um quiz final.
-    
+    Você é um professor universitário experiente e didático.
+    Crie uma aula completa em formato de SLIDES sobre "{topic}" (Nível: {level}).
+
+    REGRAS OBRIGATÓRIAS DE CONTEÚDO:
+    1. Gere EXATAMENTE 6 slides de conteúdo. Nem mais, nem menos.
+    2. O 'text' de cada slide deve ser um roteiro de aula detalhado, envolvente e explicativo (aprox. 80 a 120 palavras por slide). NÃO faça textos curtos ou resumidos. O aluno ouvirá isso.
+    3. Gere EXATAMENTE 10 perguntas de múltipla escolha para o quiz final.
+
     ESTRUTURA JSON OBRIGATÓRIA:
     {{
       "slides": [
         {{
           "id": 1,
-          "title": "Título do Slide",
-          "text": "Texto explicativo curto e direto (máx 40 palavras) para ser lido em voz alta.",
-          "imagePrompt": "Prompt visual em inglês para gerar uma imagem..."
+          "title": "Título Criativo do Slide",
+          "text": "Texto completo, rico e detalhado para ser narrado...",
+          "imagePrompt": "Prompt visual detalhado em INGLÊS para gerar uma imagem cinematográfica..."
         }}
+        ... (repita para os 6 slides)
       ],
       "quiz": [
         {{
           "questionId": 1,
-          "questionText": "Pergunta...",
-          "options": ["A", "B", "C", "D"],
+          "questionText": "Pergunta desafiadora baseada na aula...",
+          "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
           "correctOptionIndex": 0
         }}
+        ... (repita para as 10 perguntas)
       ]
     }}
-    Responda APENAS o JSON válido.
+    Responda APENAS o JSON válido. Sem markdown.
     """
 
 def clean_json_response(raw_text: str) -> dict:
