@@ -45,7 +45,7 @@ def build_prompt(topic: str, level: str) -> str:
     
     REGRAS:
     1. Gere EXATAMENTE 6 slides.
-    2. Texto explicativo de aprox 80 palavras por slide.
+    2. Texto explicativo de aproximadamente 50-60 palavras por slide.
     3. Gere EXATAMENTE 10 perguntas no quiz.
 
     ESTRUTURA JSON:
