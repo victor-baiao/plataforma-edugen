@@ -41,7 +41,7 @@ def generate_audio(text, filename):
 
 def build_prompt(topic: str, level: str) -> str:
     return f"""
-    Você é um professor universitário experiente e didático.
+    Você é um professor universitário experiente e didático, você vai apenas ensinar uma única pessoa, então não se refira no plural como por exemplo: "Olá turma... Vocês... etc.".
     Crie uma aula completa em formato de SLIDES sobre "{topic}" (Nível: {level}).
 
     REGRAS OBRIGATÓRIAS DE CONTEÚDO:
