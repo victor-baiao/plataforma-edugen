@@ -57,7 +57,7 @@ function App() {
     }
   }, [currentSlideIndex, content, viewMode, isPreloadingImages]);
 
-const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
+  const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
     setIsPreloadingImages(true);
     
     const updatedSlides = [...slides];
@@ -65,21 +65,20 @@ const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
     for (let i = 0; i < updatedSlides.length; i++) {
         const slide = updatedSlides[i];
         
-        if (i > 0) await new Promise(r => setTimeout(r, 500));
+        if (i > 0) await new Promise(r => setTimeout(r, 3000));
 
         await new Promise<void>((resolve) => {
             const img = new Image();
             let isResolved = false;
 
-            // Timeout de 25 segundos por imagem (Margem de segurança alta)
             const timer = setTimeout(() => {
                 if (!isResolved) {
-                    console.log(`Timeout na imagem ${slide.id}, usando fallback.`);
+                    console.log(`Timeout (40s) na imagem ${slide.id}, usando fallback.`);
                     slide.imageUrl = FALLBACK_IMAGE;
                     isResolved = true;
                     resolve();
                 }
-            }, 25000); 
+            }, 40000);
 
             // Sucesso
             img.onload = () => {
@@ -101,7 +100,7 @@ const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
                 }
             };
 
-            // Inicia o download desta imagem específica
+            // Inicia o download
             img.src = slide.imageUrl;
         });
     }
@@ -109,7 +108,6 @@ const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
     setIsPreloadingImages(false);
     return updatedSlides;
   };
-
   const handleGenerate = async () => {
     if (!topic.trim()) return alert('Por favor, digite um tópico!');
     
