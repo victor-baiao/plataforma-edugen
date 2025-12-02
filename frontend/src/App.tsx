@@ -125,7 +125,7 @@ function App() {
 
       if (!response.ok) throw new Error('Erro ao conectar com o servidor');
 
-      let data: LearningContent = await response.json();
+      const data: LearningContent = await response.json();
       
       setLoading(false); // Texto carregou
       
