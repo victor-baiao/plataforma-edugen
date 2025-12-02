@@ -46,7 +46,6 @@ function App() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Imagem de Backup (Fallback) - Fundo abstrato profissional
   const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop";
 
   useEffect(() => {
@@ -58,8 +57,7 @@ function App() {
     }
   }, [currentSlideIndex, content, viewMode, isPreloadingImages]);
 
-  // --- NOVA FUNÇÃO DE PRÉ-CARREGAMENTO INTELIGENTE ---
-  const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
+const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
     setIsPreloadingImages(true);
     
     // Processa todos os slides em paralelo
@@ -68,17 +66,16 @@ function App() {
             const img = new Image();
             let isResolved = false;
 
-            // 1. Timeout de Segurança: Se demorar +4 segundos, usa fallback
+            // A Pollinations as vezes demora, precisamos esperar.
             const timer = setTimeout(() => {
                 if (!isResolved) {
-                    console.log(`Timeout na imagem ${slide.id}, usando fallback.`);
+                    console.log(`Timeout (20s) na imagem ${slide.id}, usando fallback.`);
                     slide.imageUrl = FALLBACK_IMAGE;
                     isResolved = true;
                     resolve(slide);
                 }
-            }, 4000);
+            }, 20000); 
 
-            // 2. Sucesso: Imagem carregou
             img.onload = () => {
                 if (!isResolved) {
                     clearTimeout(timer);
@@ -87,18 +84,16 @@ function App() {
                 }
             };
 
-            // 3. Erro: Imagem falhou (404, etc)
             img.onerror = () => {
                 if (!isResolved) {
                     clearTimeout(timer);
-                    console.log(`Erro na imagem ${slide.id}, usando fallback.`);
+                    console.log(`Erro de rede na imagem ${slide.id}, usando fallback.`);
                     slide.imageUrl = FALLBACK_IMAGE;
                     isResolved = true;
                     resolve(slide);
                 }
             };
 
-            // Inicia o carregamento
             img.src = slide.imageUrl;
         });
     }));
