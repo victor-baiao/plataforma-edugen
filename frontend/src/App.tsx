@@ -60,46 +60,54 @@ function App() {
 const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
     setIsPreloadingImages(true);
     
-    // Processa todos os slides em paralelo
-    const processedSlides = await Promise.all(slides.map(async (slide) => {
-        return new Promise<Slide>((resolve) => {
+    const updatedSlides = [...slides];
+
+    for (let i = 0; i < updatedSlides.length; i++) {
+        const slide = updatedSlides[i];
+        
+        if (i > 0) await new Promise(r => setTimeout(r, 500));
+
+        await new Promise<void>((resolve) => {
             const img = new Image();
             let isResolved = false;
 
-            // A Pollinations as vezes demora, precisamos esperar.
+            // Timeout de 25 segundos por imagem (Margem de segurança alta)
             const timer = setTimeout(() => {
                 if (!isResolved) {
-                    console.log(`Timeout (20s) na imagem ${slide.id}, usando fallback.`);
+                    console.log(`Timeout na imagem ${slide.id}, usando fallback.`);
                     slide.imageUrl = FALLBACK_IMAGE;
                     isResolved = true;
-                    resolve(slide);
+                    resolve();
                 }
-            }, 20000); 
+            }, 25000); 
 
+            // Sucesso
             img.onload = () => {
                 if (!isResolved) {
                     clearTimeout(timer);
                     isResolved = true;
-                    resolve(slide);
+                    resolve();
                 }
             };
 
+            // Erro
             img.onerror = () => {
                 if (!isResolved) {
                     clearTimeout(timer);
-                    console.log(`Erro de rede na imagem ${slide.id}, usando fallback.`);
+                    console.log(`Erro na imagem ${slide.id}, usando fallback.`);
                     slide.imageUrl = FALLBACK_IMAGE;
                     isResolved = true;
-                    resolve(slide);
+                    resolve();
                 }
             };
 
+            // Inicia o download desta imagem específica
             img.src = slide.imageUrl;
         });
-    }));
+    }
 
     setIsPreloadingImages(false);
-    return processedSlides;
+    return updatedSlides;
   };
 
   const handleGenerate = async () => {
