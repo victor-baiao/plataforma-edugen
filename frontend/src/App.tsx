@@ -73,12 +73,12 @@ function App() {
 
             const timer = setTimeout(() => {
                 if (!isResolved) {
-                    console.log(`Timeout (40s) na imagem ${slide.id}, usando fallback.`);
+                    console.log(`Timeout (60s) na imagem ${slide.id}, usando fallback.`);
                     slide.imageUrl = FALLBACK_IMAGE;
                     isResolved = true;
                     resolve();
                 }
-            }, 40000);
+            }, 60000);
 
             // Sucesso
             img.onload = () => {
