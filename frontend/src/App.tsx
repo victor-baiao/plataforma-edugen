@@ -46,30 +46,65 @@ function App() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Imagem de Backup (Fallback) - Fundo abstrato profissional
+  const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop";
+
   useEffect(() => {
     if (content && viewMode === 'slides' && !isPreloadingImages && audioRef.current) {
       audioRef.current.pause();
       audioRef.current.load();
-      
-      audioRef.current.playbackRate = 1.50;
-
+      audioRef.current.playbackRate = 1.35; 
       audioRef.current.play().catch(e => console.log("Autoplay bloqueado:", e));
     }
   }, [currentSlideIndex, content, viewMode, isPreloadingImages]);
 
-  // Função Auxiliar: Pré-carregar Imagens
-  const preloadImages = async (slides: Slide[]) => {
+  // --- NOVA FUNÇÃO DE PRÉ-CARREGAMENTO INTELIGENTE ---
+  const validateAndPreloadImages = async (slides: Slide[]): Promise<Slide[]> => {
     setIsPreloadingImages(true);
-    const promises = slides.map((slide) => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.src = slide.imageUrl;
-        img.onload = resolve;
-        img.onerror = resolve; 
-      });
-    });
-    await Promise.all(promises);
+    
+    // Processa todos os slides em paralelo
+    const processedSlides = await Promise.all(slides.map(async (slide) => {
+        return new Promise<Slide>((resolve) => {
+            const img = new Image();
+            let isResolved = false;
+
+            // 1. Timeout de Segurança: Se demorar +4 segundos, usa fallback
+            const timer = setTimeout(() => {
+                if (!isResolved) {
+                    console.log(`Timeout na imagem ${slide.id}, usando fallback.`);
+                    slide.imageUrl = FALLBACK_IMAGE;
+                    isResolved = true;
+                    resolve(slide);
+                }
+            }, 4000);
+
+            // 2. Sucesso: Imagem carregou
+            img.onload = () => {
+                if (!isResolved) {
+                    clearTimeout(timer);
+                    isResolved = true;
+                    resolve(slide);
+                }
+            };
+
+            // 3. Erro: Imagem falhou (404, etc)
+            img.onerror = () => {
+                if (!isResolved) {
+                    clearTimeout(timer);
+                    console.log(`Erro na imagem ${slide.id}, usando fallback.`);
+                    slide.imageUrl = FALLBACK_IMAGE;
+                    isResolved = true;
+                    resolve(slide);
+                }
+            };
+
+            // Inicia o carregamento
+            img.src = slide.imageUrl;
+        });
+    }));
+
     setIsPreloadingImages(false);
+    return processedSlides;
   };
 
   const handleGenerate = async () => {
@@ -90,10 +125,13 @@ function App() {
 
       if (!response.ok) throw new Error('Erro ao conectar com o servidor');
 
-      const data: LearningContent = await response.json();
+      let data: LearningContent = await response.json();
       
-      setLoading(false); 
-      await preloadImages(data.slides); 
+      setLoading(false); // Texto carregou
+      
+      // Valida as imagens antes de mostrar
+      data.slides = await validateAndPreloadImages(data.slides); 
+      
       setContent(data); 
       
     } catch (err) {
@@ -104,6 +142,7 @@ function App() {
     }
   };
 
+  // ... (Resto das funções de navegação iguais: nextSlide, prevSlide, etc) ...
   const nextSlide = () => {
     if (content && currentSlideIndex < content.slides.length - 1) {
       setCurrentSlideIndex(prev => prev + 1);
@@ -132,11 +171,6 @@ function App() {
     if (p === 100) return { text: "Perfeito! Você dominou o assunto!", color: "text-teal-600" };
     if (p >= 70) return { text: "Excelente! Você aprendeu muito.", color: "text-teal-600" };
     return { text: "Bom esforço! Que tal rever os slides?", color: "text-orange-500" };
-  };
-
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = "https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2029&auto=format&fit=crop";
-    e.currentTarget.onerror = null; // Previne loop infinito
   };
 
   const isProcessing = loading || isPreloadingImages;
@@ -226,9 +260,8 @@ function App() {
                             key={content.slides[currentSlideIndex].imageUrl}
                             src={content.slides[currentSlideIndex].imageUrl} 
                             alt={content.slides[currentSlideIndex].title} 
-
-                            onError={handleImageError}
-
+                            // O tratamento de erro no DOM é um fallback extra
+                            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
                             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
@@ -256,15 +289,14 @@ function App() {
 
             {viewMode === 'quiz' && (
                 <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 animate-in zoom-in-95">
-                    
-                    {!isQuizFinished && (
+                    {/* ... (CÓDIGO DO QUIZ CONTINUA IGUAL AO ANTERIOR) ... */}
+                    {!isQuizFinished ? (
                         <div>
                             <div className="flex items-center justify-between mb-8">
                                 <h2 className="text-2xl font-bold text-slate-800 flex gap-2"><CheckCircle className="text-teal-500" /> Quiz de Fixação</h2>
                                 <span className="text-sm font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Questão {currentQuizIndex + 1}/{content.quiz.length}</span>
                             </div>
                             <div className="w-full bg-slate-100 h-2 rounded-full mb-8"><div className="bg-teal-500 h-full transition-all" style={{ width: `${((currentQuizIndex + 1) / content.quiz.length) * 100}%` }}></div></div>
-                            
                             <h3 className="text-xl font-semibold text-slate-800 mb-6">{content.quiz[currentQuizIndex].questionText}</h3>
                             <div className="grid gap-3 mb-8">
                                 {content.quiz[currentQuizIndex].options.map((opt, idx) => (
@@ -278,9 +310,7 @@ function App() {
                                 <button onClick={handleNextQuestion} disabled={userAnswers[currentQuizIndex] === undefined} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl font-bold disabled:opacity-50">Próxima <ArrowRight size={18} className="inline" /></button>
                             </div>
                         </div>
-                    )}
-
-                    {isQuizFinished && !showAnswerKey && (
+                    ) : (
                         <div className="text-center py-8">
                             <Trophy size={64} className="mx-auto text-yellow-500 mb-6 animate-bounce" />
                             <h2 className="text-3xl font-bold text-slate-800 mb-2">Quiz Finalizado!</h2>
@@ -288,29 +318,15 @@ function App() {
                             <p className={`font-medium text-xl mb-12 ${getMotivationMessage(calculateScore(), content.quiz.length).color}`}>{getMotivationMessage(calculateScore(), content.quiz.length).text}</p>
                             
                             <div className="grid gap-4 max-w-sm mx-auto">
-                                <button 
-                                    onClick={resetQuiz} 
-                                    className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-4 rounded-xl font-bold hover:bg-slate-50 flex items-center justify-center gap-2"
-                                >
-                                    <RotateCcw size={20} /> Refazer Quiz
-                                </button>
-                                <button 
-                                    onClick={() => setShowAnswerKey(true)} 
-                                    className="w-full bg-slate-900 text-white px-6 py-4 rounded-xl font-bold shadow-lg hover:bg-slate-800 flex items-center justify-center gap-2"
-                                >
-                                    <Eye size={20} /> Revelar Gabarito
-                                </button>
+                                <button onClick={resetQuiz} className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-4 rounded-xl font-bold hover:bg-slate-50 flex items-center justify-center gap-2"><RotateCcw size={20} /> Refazer Quiz</button>
+                                <button onClick={() => setShowAnswerKey(true)} className="w-full bg-slate-900 text-white px-6 py-4 rounded-xl font-bold shadow-lg hover:bg-slate-800 flex items-center justify-center gap-2"><Eye size={20} /> Revelar Gabarito</button>
                             </div>
                         </div>
                     )}
 
                     {isQuizFinished && showAnswerKey && (
                          <div className="animate-in fade-in slide-in-from-bottom-4">
-                             <div className="text-center mb-8">
-                                <h2 className="text-2xl font-bold text-slate-800">Gabarito da Prova</h2>
-                                <p className="text-slate-500">Confira abaixo onde você acertou e errou.</p>
-                             </div>
-
+                             <div className="text-center mb-8"><h2 className="text-2xl font-bold text-slate-800">Gabarito da Prova</h2><p className="text-slate-500">Confira abaixo onde você acertou e errou.</p></div>
                              <div className="space-y-6 mb-12">
                                 {content.quiz.map((q, idx) => {
                                   const userAnswer = userAnswers[idx];
@@ -329,14 +345,12 @@ function App() {
                                   );
                                 })}
                              </div>
-
                              <div className="flex justify-center gap-4 border-t border-slate-100 pt-8">
                                 <button onClick={resetQuiz} className="px-6 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 font-semibold text-slate-700">Refazer Quiz</button>
                                 <button onClick={() => setContent(null)} className="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-lg">Novo Assunto</button>
                             </div>
                          </div>
                     )}
-
                 </div>
             )}
           </div>

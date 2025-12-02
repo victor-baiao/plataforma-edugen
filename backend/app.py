@@ -27,40 +27,50 @@ except KeyError:
 
 def generate_audio(text, filename):
     if not text or len(text.strip()) == 0:
-        return
+        return False
 
     try:
+        # lang='pt' para português genérico
         tts = gTTS(text=text, lang='pt')
         save_path = os.path.join(STATIC_DIR, filename)
         tts.save(save_path)
         return True
     except Exception as e:
-        print(f"Erro no gTTS para {filename}: {e}")
+        print(f"Erro ao salvar áudio {filename}: {e}")
         return False
 
 def build_prompt(topic: str, level: str) -> str:
     return f"""
-    Você é um professor universitário experiente. Crie uma aula em SLIDES sobre "{topic}" (Nível: {level}).
-    Gere um JSON com slides didáticos e um quiz final.
-    
-    REGRAS:
-    1. Gere EXATAMENTE 6 slides.
-    2. Texto explicativo de aproximadamente 50-60 palavras por slide.
-    3. Gere EXATAMENTE 10 perguntas no quiz.
+    Você é um professor universitário experiente e didático.
+    Crie uma aula completa em formato de SLIDES sobre "{topic}" (Nível: {level}).
 
-    ESTRUTURA JSON:
+    REGRAS OBRIGATÓRIAS DE CONTEÚDO:
+    1. Gere EXATAMENTE 6 slides de conteúdo.
+    2. O 'text' de cada slide deve ser um roteiro explicativo de APROXIMADAMENTE 50 A 60 PALAVRAS. Deve ser fluído para ser lido em voz alta.
+    3. Gere EXATAMENTE 10 perguntas de múltipla escolha para o quiz final.
+
+    ESTRUTURA JSON OBRIGATÓRIA:
     {{
       "slides": [
         {{
           "id": 1,
-          "title": "Título...",
-          "text": "Texto para ser lido...",
-          "imagePrompt": "Prompt visual em inglês..."
+          "title": "Título Criativo do Slide",
+          "text": "Texto explicativo (50-60 palavras) para o narrador...",
+          "imagePrompt": "Prompt visual detalhado em INGLÊS para gerar uma imagem..."
         }}
+        ... (repita para os 6 slides)
       ],
-      "quiz": [ ... ]
+      "quiz": [
+        {{
+          "questionId": 1,
+          "questionText": "Pergunta desafiadora baseada na aula...",
+          "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
+          "correctOptionIndex": 0
+        }}
+        ... (repita para as 10 perguntas)
+      ]
     }}
-    Responda APENAS o JSON.
+    Responda APENAS o JSON válido. Sem markdown.
     """
 
 def clean_json_response(raw_text: str) -> dict:
@@ -80,37 +90,44 @@ def generate_learning_content():
 
         print(f"Gerando aula sobre: {topic}")
 
+        # Gera o Roteiro (Texto + Quiz) com Gemini
         prompt = build_prompt(topic, level)
         response = model.generate_content(prompt)
         content_data = clean_json_response(response.text)
         
-        if "error" in content_data: return jsonify(content_data), 500
+        if "error" in content_data:
+            print("Erro no JSON da IA:", content_data)
+            return jsonify(content_data), 500
 
+        # Processa os Slides (Imagens + Áudios)
         base_url = os.environ.get('RENDER_EXTERNAL_URL', 'http://127.0.0.1:5000')
 
-        for i, slide in enumerate(content_data['slides']):
-            # Imagem
-            encoded_prompt = slide['imagePrompt'].replace(" ", "%20")
-            seed = uuid.uuid4().int % 100
-            slide['imageUrl'] = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=576&nologo=true&seed={seed}"
-            
-            # Áudio
-            audio_filename = f"{uuid.uuid4()}.mp3"
-            
-            if i > 0: 
-                time.sleep(2) 
-            
-            success = generate_audio(slide['text'], audio_filename)
-            
-            if success:
-                slide['audioUrl'] = f"{base_url}/static/{audio_filename}"
-            else:
-                slide['audioUrl'] = "" 
-
+        # Itera sobre os slides gerados pela IA
+        if 'slides' in content_data:
+            for i, slide in enumerate(content_data['slides']):
+                # Imagem (Pollinations)
+                encoded_prompt = slide['imagePrompt'].replace(" ", "%20")
+                seed = uuid.uuid4().int % 100
+                slide['imageUrl'] = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=576&nologo=true&seed={seed}"
+                
+                # Áudio (gTTS)
+                audio_filename = f"{uuid.uuid4()}.mp3"
+                
+                # Delay para evitar erro 429 (Too Many Requests) do Google
+                if i > 0: 
+                    time.sleep(2) 
+                
+                success = generate_audio(slide['text'], audio_filename)
+                
+                if success:
+                    slide['audioUrl'] = f"{base_url}/static/{audio_filename}"
+                else:
+                    slide['audioUrl'] = "" # Frontend trata se estiver vazio
+        
         return jsonify(content_data), 200
 
     except Exception as e:
-        print(f"ERRO GERAL: {e}")
+        print(f"ERRO GERAL NO SERVIDOR: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
