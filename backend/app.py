@@ -2,6 +2,7 @@ import os
 import google.generativeai as genai
 import json
 import uuid
+import time
 from gtts import gTTS
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -18,7 +19,6 @@ if not os.path.exists(STATIC_DIR):
 app = Flask(__name__, static_folder=STATIC_DIR)
 CORS(app)
 
-# Configuração da IA
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
     model = genai.GenerativeModel('models/gemini-pro-latest')
@@ -29,43 +29,38 @@ def generate_audio(text, filename):
     if not text or len(text.strip()) == 0:
         return
 
-    tts = gTTS(text=text, lang='pt')
-    
-    save_path = os.path.join(STATIC_DIR, filename)
-    tts.save(save_path)
+    try:
+        tts = gTTS(text=text, lang='pt')
+        save_path = os.path.join(STATIC_DIR, filename)
+        tts.save(save_path)
+        return True
+    except Exception as e:
+        print(f"Erro no gTTS para {filename}: {e}")
+        return False
 
 def build_prompt(topic: str, level: str) -> str:
     return f"""
-    Você é um professor universitário experiente e didático.
-    Crie uma aula completa em formato de SLIDES sobre "{topic}" (Nível: {level}).
+    Você é um professor universitário experiente. Crie uma aula em SLIDES sobre "{topic}" (Nível: {level}).
+    Gere um JSON com slides didáticos e um quiz final.
+    
+    REGRAS:
+    1. Gere EXATAMENTE 6 slides.
+    2. Texto explicativo de aprox 80 palavras por slide.
+    3. Gere EXATAMENTE 10 perguntas no quiz.
 
-    REGRAS OBRIGATÓRIAS DE CONTEÚDO:
-    1. Gere EXATAMENTE 6 slides de conteúdo. Nem mais, nem menos.
-    2. O 'text' de cada slide deve ser um roteiro de aula detalhado, envolvente e explicativo (aprox. 80 a 120 palavras por slide). NÃO faça textos curtos ou resumidos. O aluno ouvirá isso.
-    3. Gere EXATAMENTE 10 perguntas de múltipla escolha para o quiz final.
-
-    ESTRUTURA JSON OBRIGATÓRIA:
+    ESTRUTURA JSON:
     {{
       "slides": [
         {{
           "id": 1,
-          "title": "Título Criativo do Slide",
-          "text": "Texto completo, rico e detalhado para ser narrado...",
-          "imagePrompt": "Prompt visual detalhado em INGLÊS para gerar uma imagem cinematográfica..."
+          "title": "Título...",
+          "text": "Texto para ser lido...",
+          "imagePrompt": "Prompt visual em inglês..."
         }}
-        ... (repita para os 6 slides)
       ],
-      "quiz": [
-        {{
-          "questionId": 1,
-          "questionText": "Pergunta desafiadora baseada na aula...",
-          "options": ["Opção A", "Opção B", "Opção C", "Opção D"],
-          "correctOptionIndex": 0
-        }}
-        ... (repita para as 10 perguntas)
-      ]
+      "quiz": [ ... ]
     }}
-    Responda APENAS o JSON válido. Sem markdown.
+    Responda APENAS o JSON.
     """
 
 def clean_json_response(raw_text: str) -> dict:
@@ -85,30 +80,32 @@ def generate_learning_content():
 
         print(f"Gerando aula sobre: {topic}")
 
-        # 1. Gera Roteiro (Gemini)
         prompt = build_prompt(topic, level)
         response = model.generate_content(prompt)
         content_data = clean_json_response(response.text)
         
         if "error" in content_data: return jsonify(content_data), 500
 
-        # 2. Processa Mídia (Slides)
         base_url = os.environ.get('RENDER_EXTERNAL_URL', 'http://127.0.0.1:5000')
 
-        for slide in content_data['slides']:
-            # Imagem (Pollinations)
+        for i, slide in enumerate(content_data['slides']):
+            # Imagem
             encoded_prompt = slide['imagePrompt'].replace(" ", "%20")
             seed = uuid.uuid4().int % 100
             slide['imageUrl'] = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=576&nologo=true&seed={seed}"
             
-            # Áudio (Google TTS)
+            # Áudio
             audio_filename = f"{uuid.uuid4()}.mp3"
-            try:
-                generate_audio(slide['text'], audio_filename)
+            
+            if i > 0: 
+                time.sleep(2) 
+            
+            success = generate_audio(slide['text'], audio_filename)
+            
+            if success:
                 slide['audioUrl'] = f"{base_url}/static/{audio_filename}"
-            except Exception as e:
-                print(f"Erro ao gerar áudio: {e}")
-                slide['audioUrl'] = "" # Segue sem áudio se falhar
+            else:
+                slide['audioUrl'] = "" 
 
         return jsonify(content_data), 200
 
