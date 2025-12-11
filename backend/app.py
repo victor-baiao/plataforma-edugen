@@ -21,7 +21,7 @@ CORS(app)
 
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel('models/gemini-pro-latest')
+    model = genai.GenerativeModel('models/gemini-1.5-flash')
 except KeyError:
     print("ERRO CRÍTICO: GOOGLE_API_KEY não encontrada.")
 
